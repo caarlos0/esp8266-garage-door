@@ -16,6 +16,4 @@ The shelly closes the relay, which is read by the esp, which then reads its sens
 
 The wiring is something like this:
 
-![image](https://github.com/caarlos0/esp8266-garage-door/assets/245435/d71a2d7d-a2b4-4783-a6f9-885862ba42b6)
-
-
+ ![image](https://github.com/caarlos0/esp8266-garage-door/assets/245435/b47e9936-df39-45d8-9466-b71fde070fd8)
