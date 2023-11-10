@@ -13,20 +13,19 @@ void setup() {
 }
 
 void loop() {
-  Serial.println(digitalRead(sensor));
+  digitalWrite(LED_BUILTIN, HIGH);
   while (!digitalRead(activates)) {
-    Serial.println("activates");
-    digitalWrite(LED_BUILTIN, HIGH);
+    Serial.println("active");
+    digitalWrite(LED_BUILTIN, LOW);
     if (digitalRead(sensor)) {
-      Serial.println("closes");
+      Serial.println("closing");
       digitalWrite(closes, HIGH);
     } else {
-      Serial.println("opens");
+      Serial.println("opening");
       digitalWrite(opens, HIGH);
     }
-    delay(100);
   }
   digitalWrite(closes, LOW);
   digitalWrite(opens, LOW);
-  digitalWrite(LED_BUILTIN, LOW);
+  digitalWrite(LED_BUILTIN, HIGH);
 }
