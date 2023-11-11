@@ -47,7 +47,7 @@ func main() {
 
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", cfg.BrokerHost, cfg.BrokerPort))
-	opts.SetClientID("homekit_espgate")
+	opts.SetClientID("homekit-garage")
 	opts.OnConnect = func(_ mqtt.Client) {
 		log.Info("connected to mqtt", "host", cfg.BrokerHost, "port", cfg.BrokerPort)
 	}
@@ -66,24 +66,17 @@ func main() {
 	ping()
 
 	var once sync.Once
-
-	var lock sync.Mutex
-	var lastAction time.Time
+	lastAction := &atomicTime{}
 
 	cli.Subscribe(topicSensor, 1, func(_ mqtt.Client, msg mqtt.Message) {
 		msg.Ack()
 		if len(msg.Payload()) == 0 {
 			return
 		}
-		if err := fs.Set("state", msg.Payload()); err != nil {
-			log.Warn(
-				"could not store event in cache",
-				"err", err,
-				"payload", string(msg.Payload()),
-			)
-		}
+
 		log.Info("got msg", "payload", string(msg.Payload()))
 		garage := a.GarageDoorOpener
+
 		once.Do(func() {
 			// startup...
 			state := stateToInt(string(msg.Payload()))
@@ -93,26 +86,28 @@ func main() {
 
 		switch string(msg.Payload()) {
 		case "open":
-			if lastAction.IsZero() || time.Since(lastAction) >= operationTimeout {
+			if lastAction.IsZero() || lastAction.Since() >= operationTimeout {
 				log.Info("open")
 				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateOpen)
+				garage.ObstructionDetected.SetValue(false)
 			} else {
 				log.Info("opening")
 				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateOpening)
 				go func() {
-					time.Sleep(operationTimeout - time.Since(lastAction))
+					time.Sleep(operationTimeout - lastAction.Since())
 					ping()
 				}()
 			}
 		case "closed":
-			if lastAction.IsZero() || time.Since(lastAction) >= operationTimeout {
+			if lastAction.IsZero() || lastAction.Since() >= operationTimeout {
 				log.Info("closed")
 				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateClosed)
+				garage.ObstructionDetected.SetValue(false)
 			} else {
 				log.Info("closing")
 				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateClosing)
 				go func() {
-					time.Sleep(operationTimeout - time.Since(lastAction))
+					time.Sleep(operationTimeout - lastAction.Since())
 					ping()
 				}()
 			}
@@ -120,9 +115,7 @@ func main() {
 	})
 
 	a.GarageDoorOpener.TargetDoorState.OnSetRemoteValue(func(v int) error {
-		lock.Lock()
-		defer lock.Unlock()
-		lastAction = time.Now()
+		lastAction.Set(time.Now())
 		a.GarageDoorOpener.ObstructionDetected.SetValue(false)
 		switch v {
 		case characteristic.TargetDoorStateOpen:
@@ -151,9 +144,12 @@ func main() {
 				continue
 			}
 
-			if time.Since(lastAction) > operationTimeout {
-				log.Info("obstructed")
-				garage.ObstructionDetected.SetValue(true)
+			if lastAction.Since() > operationTimeout+5*time.Second {
+				if garage.ObstructionDetected.Value() {
+					log.Info("obstructed")
+					garage.ObstructionDetected.SetValue(true)
+				}
+				ping()
 			}
 		}
 	}()
@@ -186,4 +182,29 @@ func stateToInt(s string) int {
 		return characteristic.CurrentDoorStateOpen
 	}
 	return characteristic.CurrentDoorStateClosed
+}
+
+type atomicTime struct {
+	t time.Time
+	m sync.Mutex
+}
+
+func (a *atomicTime) Since() time.Duration {
+	return time.Since(a.Get())
+}
+
+func (a *atomicTime) IsZero() bool {
+	return a.Get().IsZero()
+}
+
+func (a *atomicTime) Get() time.Time {
+	a.m.Lock()
+	defer a.m.Unlock()
+	return a.t
+}
+
+func (a *atomicTime) Set(t time.Time) {
+	a.m.Lock()
+	defer a.m.Unlock()
+	a.t = t
 }
