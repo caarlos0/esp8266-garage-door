@@ -43,20 +43,22 @@ void setup() {
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("got message: ");
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-  }
-  Serial.println();
-
+  digitalWrite(LED_BUILTIN, LOW);
   if ((char)payload[0] == 'p') { // ping
+    Serial.println("ping");
     lastStatus = "unknown";
     pubSensor();
   } else if ((char)payload[0] == 'o') { // open
-    handleOpen();
+    Serial.println("open");
+    digitalWrite(OPENS, HIGH);
   } else { // close
-    handleClose();
+    Serial.println("close");
+    digitalWrite(CLOSES, HIGH);
   }
+  delay(PULSE);
+  digitalWrite(OPENS, LOW);
+  digitalWrite(CLOSES, LOW);
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void reconnect() {
@@ -91,22 +93,4 @@ void pubSensor() {
     client.publish("espgate/sensor", status.c_str());
     lastStatus = status;
   }
-}
-
-void handleOpen() {
-  Serial.println("opening");
-  digitalWrite(LED_BUILTIN, LOW);
-  digitalWrite(OPENS, HIGH);
-  delay(PULSE);
-  digitalWrite(OPENS, LOW);
-  digitalWrite(LED_BUILTIN, HIGH);
-}
-
-void handleClose() {
-  Serial.println("closing");
-  digitalWrite(LED_BUILTIN, LOW);
-  digitalWrite(CLOSES, HIGH);
-  delay(PULSE);
-  digitalWrite(CLOSES, LOW);
-  digitalWrite(LED_BUILTIN, HIGH);
 }
