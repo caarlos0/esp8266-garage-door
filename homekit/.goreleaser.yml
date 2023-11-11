@@ -1,0 +1,26 @@
+project_name: homekit-garage
+before:
+  hooks:
+    - go mod tidy
+# gomod:
+#   proxy: true
+builds:
+  - goarch:
+      - amd64
+      - arm64
+    goos: [linux]
+    env:
+      - CGO_ENABLED=0
+nfpms:
+  - vendor: Becker Software LTDA
+    homepage: https://carlosbecker.com
+    maintainer: Carlos Becker <root@carlosbecker.dev>
+    description: Homekit bridge for my custom esp8266 firmware
+    formats:
+      - deb
+      - apk
+      - rpm
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Arch }}"
