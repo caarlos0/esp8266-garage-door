@@ -1,12 +1,10 @@
 #define closes 15    // D8
 #define opens 13     // D7
-#define activates 12 // D6
 #define sensor 14    // D5
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
 #include "arduino_secrets.h"
 
 const char* ssid = WIFI_SSID;
@@ -19,7 +17,6 @@ String lastAction = "none";
 void setup() {
   pinMode(closes, OUTPUT);
   pinMode(opens, OUTPUT);
-  pinMode(activates, INPUT_PULLUP);
   pinMode(sensor, INPUT_PULLUP);
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
@@ -38,35 +35,16 @@ void setup() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  if (MDNS.begin("espgate")) {
-    Serial.println("MDNS responder started");
-  }
-
   server.on("/", handleRoot);
   server.on("/open", handleOpen);
   server.on("/close", handleClose);
+  server.on("/sensor", handleSensor);
   server.begin();
   Serial.println("HTTP server started");
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void loop() {
-  digitalWrite(LED_BUILTIN, HIGH);
-  while (!digitalRead(activates)) {
-    Serial.println("active");
-    digitalWrite(LED_BUILTIN, LOW);
-    if (digitalRead(sensor)) {
-      Serial.println("closing");
-      digitalWrite(closes, HIGH);
-      lastAction = "close";
-    } else {
-      Serial.println("opening");
-      digitalWrite(opens, HIGH);
-      lastAction = "open";
-    }
-  }
-  digitalWrite(closes, LOW);
-  digitalWrite(opens, LOW);
-  digitalWrite(LED_BUILTIN, HIGH);
   server.handleClient();
 }
 
@@ -91,12 +69,16 @@ void handleRoot() {
   digitalWrite(LED_BUILTIN, HIGH);
 }
 
+void handleSensor() {
+  server.send(200, "text/html", digitalRead(sensor) ? "open" : "closed");
+}
+
 
 void handleOpen() {
   Serial.println("opening");
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(opens, HIGH);
-  delay(300);
+  delay(500);
   digitalWrite(opens, LOW);
   lastAction = "open";
   digitalWrite(LED_BUILTIN, HIGH);
@@ -108,7 +90,7 @@ void handleClose() {
   Serial.println("closing");
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(closes, HIGH);
-  delay(300);
+  delay(500);
   digitalWrite(closes, LOW);
   lastAction = "close";
   digitalWrite(LED_BUILTIN, HIGH);
