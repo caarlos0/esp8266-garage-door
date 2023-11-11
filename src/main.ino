@@ -88,7 +88,7 @@ void loop() {
 void pubSensor() {
   String status = digitalRead(SENSOR) ? "open" : "closed";
   if (status != lastStatus) {
-    client.publish("espgate/sensor", digitalRead(SENSOR) ? "open" : "closed");
+    client.publish("espgate/sensor", status);
     lastStatus = status;
   }
 }
