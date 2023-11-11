@@ -1,13 +1,10 @@
 #define closes 15    // D8
 #define opens 13     // D7
 #define sensor 14    // D5
+#define pulse  500
+#define movementTime  30000;
 
 #define LOG_D(fmt, ...)   printf_P(PSTR(fmt "\n") , ##__VA_ARGS__);
-
-extern "C" homekit_server_config_t config;
-
-const pulse = 500;
-const movementTime = 30000;
 
 #include <Arduino.h>
 #include <arduino_homekit_server.h>
