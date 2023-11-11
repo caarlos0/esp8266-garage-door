@@ -1,6 +1,6 @@
 #define CLOSES 15    // D8
 #define OPENS 13     // D7
-#define SENSOR 14    // D5
+#define SENSOR 12    // D6
 #define PULSE 500
 
 #include <ESP8266WiFi.h>

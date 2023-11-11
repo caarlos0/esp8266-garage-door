@@ -38,7 +38,7 @@ func main() {
 
 	fs := hap.NewFsStore("./db")
 
-	garage := accessory.NewGarageDoorOpener(accessory.Info{
+	a := accessory.NewGarageDoorOpener(accessory.Info{
 		Name:         "Garage 2",
 		Manufacturer: "Becker Software",
 		Model:        "1",
@@ -59,9 +59,16 @@ func main() {
 		log.Fatal("could not connect to mqtt", "token", token)
 	}
 
-	_ = cli.Publish(topicAct, 1, false, "ping")
+	ping := func() {
+		log.Info("ping")
+		_ = cli.Publish(topicAct, 1, false, "ping")
+	}
+	ping()
 
 	var once sync.Once
+
+	var lock sync.Mutex
+	var lastAction time.Time
 
 	cli.Subscribe(topicSensor, 1, func(_ mqtt.Client, msg mqtt.Message) {
 		msg.Ack()
@@ -76,36 +83,82 @@ func main() {
 			)
 		}
 		log.Info("got msg", "payload", string(msg.Payload()))
-		state := stateToInt(string(msg.Payload()))
-		_ = garage.GarageDoorOpener.CurrentDoorState.SetValue(state)
+		garage := a.GarageDoorOpener
 		once.Do(func() {
-			_ = garage.GarageDoorOpener.TargetDoorState.SetValue(state)
+			// startup...
+			state := stateToInt(string(msg.Payload()))
+			_ = garage.CurrentDoorState.SetValue(state)
+			_ = garage.TargetDoorState.SetValue(state)
 		})
+
+		switch string(msg.Payload()) {
+		case "open":
+			if lastAction.IsZero() || time.Since(lastAction) >= operationTimeout {
+				log.Info("open")
+				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateOpen)
+			} else {
+				log.Info("opening")
+				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateOpening)
+				go func() {
+					time.Sleep(operationTimeout - time.Since(lastAction))
+					ping()
+				}()
+			}
+		case "closed":
+			if lastAction.IsZero() || time.Since(lastAction) >= operationTimeout {
+				log.Info("closed")
+				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateClosed)
+			} else {
+				log.Info("closing")
+				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateClosing)
+				go func() {
+					time.Sleep(operationTimeout - time.Since(lastAction))
+					ping()
+				}()
+			}
+		}
 	})
 
-	garage.GarageDoorOpener.TargetDoorState.OnSetRemoteValue(func(v int) error {
-		garage.GarageDoorOpener.ObstructionDetected.SetValue(false)
+	a.GarageDoorOpener.TargetDoorState.OnSetRemoteValue(func(v int) error {
+		lock.Lock()
+		defer lock.Unlock()
+		lastAction = time.Now()
+		a.GarageDoorOpener.ObstructionDetected.SetValue(false)
 		switch v {
 		case characteristic.TargetDoorStateOpen:
+			log.Info("target open")
 			if token := cli.Publish(topicAct, 1, false, "open"); token.Wait() && token.Error() != nil {
 				return fmt.Errorf("failed to change status")
 			}
 		case characteristic.TargetDoorStateClosed:
+			log.Info("target close")
 			if token := cli.Publish(topicAct, 1, false, "close"); token.Wait() && token.Error() != nil {
 				return fmt.Errorf("failed to change status")
 			}
 		}
-
-		go func() {
-			time.Sleep(operationTimeout)
-			if garage.GarageDoorOpener.CurrentDoorState.Value() != garage.GarageDoorOpener.TargetDoorState.Value() {
-				garage.GarageDoorOpener.ObstructionDetected.SetValue(true)
-			}
-		}()
 		return nil
 	})
 
-	server, err := hap.NewServer(fs, garage.A)
+	go func() {
+		tick := time.NewTicker(time.Second)
+		for range tick.C {
+			garage := a.GarageDoorOpener
+			if garage.TargetDoorState.Value() == garage.CurrentDoorState.Value() {
+				if garage.ObstructionDetected.Value() {
+					log.Info("not obstructed")
+					garage.ObstructionDetected.SetValue(false)
+				}
+				continue
+			}
+
+			if time.Since(lastAction) > operationTimeout {
+				log.Info("obstructed")
+				garage.ObstructionDetected.SetValue(true)
+			}
+		}
+	}()
+
+	server, err := hap.NewServer(fs, a.A)
 	if err != nil {
 		log.Fatal("fail to start server", "error", err)
 	}
