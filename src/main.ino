@@ -1,117 +1,143 @@
 #define closes 15    // D8
 #define opens 13     // D7
-#define activates 12 // D6
 #define sensor 14    // D5
 
-#include <ESP8266WiFi.h>
-#include <WiFiClient.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
-#include "arduino_secrets.h"
+#define LOG_D(fmt, ...)   printf_P(PSTR(fmt "\n") , ##__VA_ARGS__);
 
-const char* ssid = WIFI_SSID;
-const char* password = WIFI_PASS;
+extern "C" homekit_server_config_t config;
 
-ESP8266WebServer server(80);
-WiFiClient net;
-String lastAction = "none";
+const pulse = 500;
+const movementTime = 30000;
+
+#include <Arduino.h>
+#include <arduino_homekit_server.h>
+#include "wifi.h"
+
+#define LOG_D(fmt, ...)   printf_P(PSTR(fmt "\n") , ##__VA_ARGS__);
+
+#define HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPEN 0
+#define HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED 1
+#define HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING 2
+#define HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING 3
+#define HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_STOPPED 4
+#define HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_UNKNOWN 255
+
+#define HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_OPEN 0
+#define HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_CLOSED 1
+#define HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_UNKNOWN 255
+
+#define HOMEKIT_CHARACTERISTIC_LOCK_CURRENT_STATE_UNSECURED 0
+#define HOMEKIT_CHARACTERISTIC_LOCK_CURRENT_STATE_SECURED 1
+#define HOMEKIT_CHARACTERISTIC_LOCK_CURRENT_STATE_JAMMED 2
+#define HOMEKIT_CHARACTERISTIC_LOCK_CURRENT_STATE_UNKNOWN 3
+
+#define HOMEKIT_CHARACTERISTIC_LOCK_TARGET_STATE_UNSECURED 0
+#define HOMEKIT_CHARACTERISTIC_LOCK_TARGET_STATE_SECURED 1
+#define HOMEKIT_CHARACTERISTIC_LOCK_TARGET_STATE_JAMMED 2
+#define HOMEKIT_CHARACTERISTIC_LOCK_TARGET_STATE_UNKNOWN 3
+
+
+extern "C" homekit_server_config_t config;
+extern "C" homekit_characteristic_t cha_current_door_state;
+extern "C" homekit_characteristic_t cha_target_door_state;
+extern "C" homekit_characteristic_t cha_obstruction_detected;
+extern "C" homekit_characteristic_t cha_name;
+extern "C" homekit_characteristic_t cha_lock_current_state;
+extern "C" homekit_characteristic_t cha_lock_target_state;
+
+
+homekit_value_t cha_current_door_state_getter() {
+  homekit_characteristic_t current_state = cha_current_door_state;
+  if (digitalRead(sensor)) {
+    cha_current_door_state.value.uint8_value = HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPEN;
+  } else {
+    cha_current_door_state.value.uint8_value = HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED;
+  }
+
+  // cha_current_door_state.value.uint8_value = HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING;
+  // cha_current_door_state.value.uint8_value = HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING;
+
+  homekit_characteristic_notify(&cha_target_door_state, cha_target_door_state.value);
+	LOG_D("Current door state: %i", cha_current_door_state.value.uint8_value);
+	return cha_current_door_state.value;
+}
+
+homekit_value_t cha_obstruction_detected_getter() {
+	LOG_D("Obstruction: %s", cha_obstruction_detected.value.bool_value ? "Detected" : "Not detected");
+	return cha_obstruction_detected.value;
+}
+
+homekit_value_t cha_lock_current_state_getter() {
+	LOG_D("Current lock state: %i", cha_lock_current_state.value.uint8_value);
+	return cha_lock_current_state.value;
+}
+
+void cha_target_door_state_setter(const homekit_value_t value) {
+  cha_target_door_state.value = value;
+	LOG_D("Target door state: %i", value.uint8_value);
+  if (cha_current_door_state.value.uint8_value == HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_OPEN && cha_current_door_state.value.uint8_value != cha_target_door_state.value.uint8_value) {
+    digitalWrite(opens, HIGH);
+    delay(pulse);
+    digitalWrite(opens, LOW);
+  }
+  if (cha_current_door_state.value.uint8_value == HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_CLOSED && cha_current_door_state.value.uint8_value != cha_target_door_state.value.uint8_value) {
+    digitalWrite(closes, HIGH);
+    delay(pulse);
+    digitalWrite(closes, LOW);
+  }
+
+}
+
+
+void my_homekit_setup() {
+	cha_current_door_state.getter = cha_current_door_state_getter;
+	cha_target_door_state.setter = cha_target_door_state_setter;
+	cha_lock_current_state.getter = cha_lock_current_state_getter;
+	cha_obstruction_detected.getter = cha_obstruction_detected_getter;
+
+	arduino_homekit_setup(&config);
+}
 
 void setup() {
   pinMode(closes, OUTPUT);
   pinMode(opens, OUTPUT);
-  pinMode(activates, INPUT_PULLUP);
   pinMode(sensor, INPUT_PULLUP);
-  pinMode(LED_BUILTIN, OUTPUT);
+
+
   Serial.begin(115200);
+  wifi_connect(); // in wifi.h
+  //homekit_storage_reset(); // to remove the previous HomeKit pairing storage when you first run this new HomeKit example
+	cha_current_door_state.getter = cha_current_door_state_getter;
+	cha_target_door_state.setter = cha_target_door_state_setter;
+	cha_lock_current_state.getter = cha_lock_current_state_getter;
+	cha_obstruction_detected.getter = cha_obstruction_detected_getter;
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  Serial.println("");
+	arduino_homekit_setup(&config);
 
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(100);
-    Serial.print(".");
+  homekit_value_t current_state = cha_current_door_state_getter();
+  homekit_characteristic_notify(&cha_current_door_state, cha_current_door_state.value);
+
+  switch (cha_current_door_state.value.uint8_value) {
+    case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSED:
+      cha_target_door_state.value.uint8_value = HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_CLOSED;
+      break;
+    case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_CLOSING:
+      cha_target_door_state.value.uint8_value = HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_CLOSED;
+      break;
+    case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPEN:
+      cha_target_door_state.value.uint8_value = HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_OPEN;
+      break;
+    case HOMEKIT_CHARACTERISTIC_CURRENT_DOOR_STATE_OPENING:
+      cha_target_door_state.value.uint8_value = HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_OPEN;
+      break;
+    default:
+      cha_target_door_state.value.uint8_value = HOMEKIT_CHARACTERISTIC_TARGET_DOOR_STATE_UNKNOWN;
+      break;
   }
-  Serial.println("");
-  Serial.print("Connected to ");
-  Serial.println(ssid);
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-
-  if (MDNS.begin("espgate")) {
-    Serial.println("MDNS responder started");
-  }
-
-  server.on("/", handleRoot);
-  server.on("/open", handleOpen);
-  server.on("/close", handleClose);
-  server.begin();
-  Serial.println("HTTP server started");
+  homekit_characteristic_notify(&cha_target_door_state, cha_target_door_state.value);
 }
 
 void loop() {
-  digitalWrite(LED_BUILTIN, HIGH);
-  while (!digitalRead(activates)) {
-    Serial.println("active");
-    digitalWrite(LED_BUILTIN, LOW);
-    if (digitalRead(sensor)) {
-      Serial.println("closing");
-      digitalWrite(closes, HIGH);
-      lastAction = "close";
-    } else {
-      Serial.println("opening");
-      digitalWrite(opens, HIGH);
-      lastAction = "open";
-    }
-  }
-  digitalWrite(closes, LOW);
-  digitalWrite(opens, LOW);
-  digitalWrite(LED_BUILTIN, HIGH);
-  server.handleClient();
-}
-
-void handleRoot() {
-  digitalWrite(LED_BUILTIN, LOW);
-  String body = "<html>";
-  body += "<head><title>Gate Status</title><head>";
-  body += "<body>";
-  body += "<h1>Gate ESP8266 Status</h1>\n";
-  body += "<p>Sensor status: <b>";
-  body += digitalRead(sensor) ? "open" : "closed";
-  body += "</b></p>\n";
-  body += "<p>Last action: <b>"+lastAction+"</b></p>\n";
-  body += "<p>";
-  body += "<a href=\"/open\">Open</a>";
-  body += " | ";
-  body += "<a href=\"/close\">Close</a>";
-  body += "</p>\n";
-  body += "</body>";
-  body += "</html>";
-  server.send(200, "text/html", body);
-  digitalWrite(LED_BUILTIN, HIGH);
-}
-
-
-void handleOpen() {
-  Serial.println("opening");
-  digitalWrite(LED_BUILTIN, LOW);
-  digitalWrite(opens, HIGH);
-  delay(300);
-  digitalWrite(opens, LOW);
-  lastAction = "open";
-  digitalWrite(LED_BUILTIN, HIGH);
-  server.sendHeader("Location","/");
-  server.send(303);
-}
-
-void handleClose() {
-  Serial.println("closing");
-  digitalWrite(LED_BUILTIN, LOW);
-  digitalWrite(closes, HIGH);
-  delay(300);
-  digitalWrite(closes, LOW);
-  lastAction = "close";
-  digitalWrite(LED_BUILTIN, HIGH);
-  server.sendHeader("Location","/");
-  server.send(303);
+	arduino_homekit_loop();
+  delay(10);
 }
