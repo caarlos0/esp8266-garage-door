@@ -11,6 +11,7 @@
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASS;
 const char* mqttHost = MQTT_HOST;
+const String hostname = "espgate";
 
 WiFiClient net;
 PubSubClient client(net);
@@ -19,6 +20,8 @@ String lastStatus = "unknown";
 void setup() {
   pinMode(CLOSES, OUTPUT);
   pinMode(OPENS, OUTPUT);
+  digitalWrite(OPENS, HIGH);
+  digitalWrite(CLOSES, HIGH);
   pinMode(SENSOR, INPUT_PULLUP);
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
@@ -50,22 +53,22 @@ void callback(char* topic, byte* payload, unsigned int length) {
     pubSensor();
   } else if ((char)payload[0] == 'o') { // open
     Serial.println("open");
-    digitalWrite(OPENS, HIGH);
+    digitalWrite(OPENS, LOW);
   } else { // close
     Serial.println("close");
-    digitalWrite(CLOSES, HIGH);
+    digitalWrite(CLOSES, LOW);
   }
   delay(PULSE);
-  digitalWrite(OPENS, LOW);
-  digitalWrite(CLOSES, LOW);
+  digitalWrite(OPENS, HIGH);
+  digitalWrite(CLOSES, HIGH);
   digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void reconnect() {
   while (!client.connected()) {
-    if (client.connect("espgate")) {
+    if (client.connect(hostname.c_str())) {
       Serial.println("connected");
-      client.subscribe("espgate/act");
+      client.subscribe((hostname + "/act").c_str());
       lastStatus = "unknown";
       pubSensor();
     } else {
@@ -90,7 +93,7 @@ void loop() {
 void pubSensor() {
   String status = digitalRead(SENSOR) ? "open" : "closed";
   if (status != lastStatus) {
-    client.publish("espgate/sensor", status.c_str());
+    client.publish((hostname+"/sensor").c_str(), status.c_str());
     lastStatus = status;
   }
 }
