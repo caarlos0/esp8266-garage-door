@@ -26,3 +26,8 @@ In the firmware, you might want to change the `PULSE` (default 500ms) time.
 You'll also need to create an `arduino_secrets.h` with the Wifi info and MQTT server IP.
 
 In the homekit controller, you'll need to set the `operationTimeout` (default 30s) and the MQTT server IP.
+
+## Future
+
+Maybe ditch the separated Go homekit controller and run it directly in the ESP?
+Not sure if worth it, as its painful to update/debug... 
