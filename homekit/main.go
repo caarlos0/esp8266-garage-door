@@ -90,41 +90,55 @@ func main() {
 				log.Info("open")
 				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateOpen)
 				garage.ObstructionDetected.SetValue(false)
-			} else {
-				log.Info("opening")
-				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateOpening)
-				go func() {
-					time.Sleep(operationTimeout - lastAction.Since())
-					ping()
-				}()
+				return
 			}
+
+			log.Info("opening")
+			_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateOpening)
+			go func() {
+				time.Sleep(operationTimeout - lastAction.Since())
+				ping()
+			}()
 		case "closed":
+
 			if lastAction.IsZero() || lastAction.Since() >= operationTimeout {
 				log.Info("closed")
 				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateClosed)
 				garage.ObstructionDetected.SetValue(false)
-			} else {
-				log.Info("closing")
-				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateClosing)
-				go func() {
-					time.Sleep(operationTimeout - lastAction.Since())
-					ping()
-				}()
+				return
 			}
+
+			log.Info("closing")
+			_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateClosing)
+			go func() {
+				time.Sleep(operationTimeout - lastAction.Since())
+				ping()
+			}()
 		}
 	})
 
 	a.GarageDoorOpener.TargetDoorState.OnSetRemoteValue(func(v int) error {
 		lastAction.Set(time.Now())
-		a.GarageDoorOpener.ObstructionDetected.SetValue(false)
+		garage := a.GarageDoorOpener
+		garage.ObstructionDetected.SetValue(false)
 		switch v {
 		case characteristic.TargetDoorStateOpen:
-			log.Info("target open")
+			if garage.CurrentDoorState.Value() == characteristic.CurrentDoorStateOpen ||
+				garage.CurrentDoorState.Value() == characteristic.CurrentDoorStateOpening {
+				log.Info("already open/opening")
+				return nil
+			}
+			log.Info("request open")
 			if token := cli.Publish(topicAct, 1, false, "open"); token.Wait() && token.Error() != nil {
 				return fmt.Errorf("failed to change status")
 			}
 		case characteristic.TargetDoorStateClosed:
-			log.Info("target close")
+			if garage.CurrentDoorState.Value() == characteristic.CurrentDoorStateClosed ||
+				garage.CurrentDoorState.Value() == characteristic.CurrentDoorStateClosing {
+				log.Info("already closed/closing")
+				return nil
+			}
+			log.Info("request close")
 			if token := cli.Publish(topicAct, 1, false, "close"); token.Wait() && token.Error() != nil {
 				return fmt.Errorf("failed to change status")
 			}
