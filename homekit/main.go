@@ -59,11 +59,11 @@ func main() {
 		log.Fatal("could not connect to mqtt", "token", token)
 	}
 
-	ping := func() {
-		log.Info("ping")
+	ping := func(from string) {
+		log.Info("ping", "from", from)
 		_ = cli.Publish(topicAct, 1, false, "ping")
 	}
-	ping()
+	ping("main")
 
 	var once sync.Once
 	lastAction := &atomicTime{}
@@ -88,31 +88,30 @@ func main() {
 		case "open":
 			if lastAction.IsZero() || lastAction.Since() >= operationTimeout {
 				log.Info("open")
+				lastAction.Zero()
 				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateOpen)
 				garage.ObstructionDetected.SetValue(false)
 				return
 			}
-
 			log.Info("opening")
 			_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateOpening)
 			go func() {
 				time.Sleep(operationTimeout - lastAction.Since())
-				ping()
+				ping("open msg")
 			}()
 		case "closed":
-
 			if lastAction.IsZero() || lastAction.Since() >= operationTimeout {
 				log.Info("closed")
+				lastAction.Zero()
 				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateClosed)
 				garage.ObstructionDetected.SetValue(false)
 				return
 			}
-
 			log.Info("closing")
 			_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateClosing)
 			go func() {
 				time.Sleep(operationTimeout - lastAction.Since())
-				ping()
+				ping("closed msg")
 			}()
 		}
 	})
@@ -163,7 +162,7 @@ func main() {
 					log.Info("obstructed")
 					garage.ObstructionDetected.SetValue(true)
 				}
-				ping()
+				ping("obstructed")
 			}
 		}
 	}()
@@ -205,6 +204,10 @@ type atomicTime struct {
 
 func (a *atomicTime) Since() time.Duration {
 	return time.Since(a.Get())
+}
+
+func (a *atomicTime) Zero() {
+	a.Set(time.Time{})
 }
 
 func (a *atomicTime) IsZero() bool {
