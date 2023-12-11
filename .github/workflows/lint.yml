@@ -9,6 +9,10 @@ on:
 
 permissions: read-all
 
+defaults:
+  run:
+    working-directory: ./homekit
+
 jobs:
   golangci:
     name: lint

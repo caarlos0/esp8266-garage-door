@@ -1,7 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: "gomod"
-    directory: "/"
+    directory: "/homekit"
     schedule:
       interval: "daily"
       time: "08:00"
@@ -20,4 +20,3 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-

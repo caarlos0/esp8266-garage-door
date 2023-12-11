@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    working-directory: ./homekit
+
 jobs:
   govulncheck:
     uses: caarlos0/meta/.github/workflows/govulncheck.yml@main
