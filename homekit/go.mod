@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/brutella/hap v0.0.28
 	github.com/caarlos0/env/v10 v10.0.0
-	github.com/charmbracelet/log v0.3.0
+	github.com/charmbracelet/log v0.3.1
 	github.com/eclipse/paho.mqtt.golang v1.4.3
 )
 
