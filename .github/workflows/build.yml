@@ -20,6 +20,7 @@ jobs:
     uses: caarlos0/meta/.github/workflows/govulncheck.yml@main
     with:
       go-version: stable
+      working-directory: ./homekit
   semgrep:
     uses: caarlos0/meta/.github/workflows/semgrep.yml@main
   ruleguard:
