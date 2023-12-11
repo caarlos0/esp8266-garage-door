@@ -39,6 +39,5 @@ jobs:
           working-directory: ./homekit
           go-version: stable
       - name: test
-        with:
-          working-directory: ./homekit
+        working-directory: ./homekit
         run: go test -v ./...
