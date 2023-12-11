@@ -11,33 +11,23 @@ on:
 permissions:
   contents: read
 
-defaults:
-  run:
-    working-directory: ./homekit
-
 jobs:
   govulncheck:
     uses: caarlos0/meta/.github/workflows/govulncheck.yml@main
     with:
       go-version: stable
-      working-directory: ./homekit
   semgrep:
     uses: caarlos0/meta/.github/workflows/semgrep.yml@main
-    with:
-      working-directory: ./homekit
   ruleguard:
     uses: caarlos0/meta/.github/workflows/ruleguard.yml@main
     with:
       go-version: stable
-      working-directory: ./homekit
   unit-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          working-directory: ./homekit
           go-version: stable
       - name: test
-        working-directory: ./homekit
         run: go test -v ./...

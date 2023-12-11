@@ -9,10 +9,6 @@ on:
 
 permissions: read-all
 
-defaults:
-  run:
-    working-directory: ./homekit
-
 jobs:
   golangci:
     name: lint
@@ -23,6 +19,3 @@ jobs:
         with:
           go-version: stable
       - uses: golangci/golangci-lint-action@v3
-        with:
-          # https://github.com/golangci/golangci-lint-action/issues/369
-          working-directory: ./homekit
