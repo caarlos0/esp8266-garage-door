@@ -3,7 +3,7 @@ module homekit
 go 1.21
 
 require (
-	github.com/brutella/hap v0.0.28
+	github.com/brutella/hap v0.0.31
 	github.com/caarlos0/env/v10 v10.0.0
 	github.com/charmbracelet/log v0.3.1
 	github.com/eclipse/paho.mqtt.golang v1.4.3
@@ -33,4 +33,5 @@ require (
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
+	gopkg.in/Regis24GmbH/go-diacritics.v2 v2.0.3 // indirect
 )
