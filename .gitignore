@@ -4,3 +4,4 @@
 .ccls
 arduino_secrets.h
 db
+dist/
