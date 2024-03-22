@@ -63,7 +63,15 @@ func main() {
 		log.Info("ping", "from", from)
 		_ = cli.Publish(topicAct, 1, false, "ping")
 	}
+
 	ping("main")
+	go func() {
+		// when power goes out, sometimes things are not up yet... this gives
+		// an extra ping after a couple of minutes on startup... should help
+		// sync things up...
+		time.Sleep(time.Minute * 5)
+		ping("delayed-main")
+	}()
 
 	var once sync.Once
 	lastAction := &atomicTime{}
