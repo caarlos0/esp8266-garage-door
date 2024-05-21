@@ -97,11 +97,13 @@ func main() {
 			if lastAction.IsZero() || lastAction.Since() >= operationTimeout {
 				log.Info("open")
 				lastAction.Zero()
+				_ = garage.TargetDoorState.SetValue(characteristic.CurrentDoorStateOpen)
 				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateOpen)
 				garage.ObstructionDetected.SetValue(false)
 				return
 			}
 			log.Info("opening")
+			_ = garage.TargetDoorState.SetValue(characteristic.CurrentDoorStateOpening)
 			_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateOpening)
 			go func() {
 				time.Sleep(operationTimeout - lastAction.Since())
@@ -111,6 +113,7 @@ func main() {
 			if lastAction.IsZero() || lastAction.Since() >= operationTimeout {
 				log.Info("closed")
 				lastAction.Zero()
+				_ = garage.TargetDoorState.SetValue(characteristic.CurrentDoorStateClosed)
 				_ = garage.CurrentDoorState.SetValue(characteristic.CurrentDoorStateClosed)
 				garage.ObstructionDetected.SetValue(false)
 				return
