@@ -14,7 +14,7 @@ import (
 	"github.com/brutella/hap"
 	"github.com/brutella/hap/accessory"
 	"github.com/brutella/hap/characteristic"
-	"github.com/caarlos0/env/v10"
+	"github.com/caarlos0/env/v11"
 	"github.com/charmbracelet/log"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
@@ -31,8 +31,8 @@ type Config struct {
 }
 
 func main() {
-	var cfg Config
-	if err := env.Parse(&cfg); err != nil {
+	cfg, err := env.ParseAs[Config]()
+	if err != nil {
 		log.Fatal("failed to parse config", "err", err)
 	}
 

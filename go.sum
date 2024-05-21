@@ -4,8 +4,8 @@ github.com/brutella/dnssd v1.2.10 h1:Gg0k7+NtJp7TbOMS0eUVg0VEjSdftzKOTQ8QQTzQ0x4
 github.com/brutella/dnssd v1.2.10/go.mod h1:yZ+GHHbGhtp5yJeKTnppdFGiy6OhiPoxs0WHW1KUcFA=
 github.com/brutella/hap v0.0.31 h1:2UDKVecPbpXYUwCWqIKB3fjF9z7mykX4g0jwU+ID/eo=
 github.com/brutella/hap v0.0.31/go.mod h1:SZfaxv/VE3Ash7T55criv5KuLP4qpbCq7RWueEBifPs=
-github.com/caarlos0/env/v10 v10.0.0 h1:yIHUBZGsyqCnpTkbjk8asUlx6RFhhEs+h7TOBdgdzXA=
-github.com/caarlos0/env/v10 v10.0.0/go.mod h1:ZfulV76NvVPw3tm591U4SwL3Xx9ldzBP9aGxzeN7G18=
+github.com/caarlos0/env/v11 v11.0.0 h1:ZIlkOjuL3xoZS0kmUJlF74j2Qj8GMOq3CDLX/Viak8Q=
+github.com/caarlos0/env/v11 v11.0.0/go.mod h1:2RC3HQu8BQqtEK3V4iHPxj0jOdWdbPpWJ6pOueeU1xM=
 github.com/charmbracelet/lipgloss v0.9.1 h1:PNyd3jvaJbg4jRHKWXnCj1akQm4rh8dbEzN1p/u1KWg=
 github.com/charmbracelet/lipgloss v0.9.1/go.mod h1:1mPmG4cxScwUQALAAnacHaigiiHB9Pmr+v1VEawJl6I=
 github.com/charmbracelet/log v0.3.1 h1:TjuY4OBNbxmHWSwO3tosgqs5I3biyY8sQPny/eCMTYw=
