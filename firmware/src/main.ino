@@ -91,6 +91,7 @@ void loop() {
 }
 
 void pubSensor() {
+  // NC, change to NO
   String status = digitalRead(SENSOR) ? "open" : "closed";
   if (status != lastStatus) {
     client.publish((hostname+"/sensor").c_str(), status.c_str());
