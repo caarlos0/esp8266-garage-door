@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Garage</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.1"></script>
+  </head>
+  <body>
+    <div class="hero bg-base-200 min-h-screen">
+      <div class="hero-content text-center">
+        <div class="max-w-md">
+          <h1 class="text-5xl font-bold">Garage</h1>
+          <div class="badge badge-primary badge-outline">
+            currently {{.State}}
+          </div>
+          <ul
+            class="menu menu-vertical lg:menu-horizontal bg-base-200 rounded-box"
+          >
+            <li>
+              <a class="btn btn-success" hx-post="/open" hx-swap="none">Open</a>
+            </li>
+            <a class="btn btn-warning" hx-post="/close" hx-swap="none">Close</a>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

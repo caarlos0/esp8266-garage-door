@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"text/template"
 	"time"
 
 	"github.com/brutella/hap"
@@ -19,6 +21,9 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+//go:embed index.html
+var index []byte
+
 const (
 	operationTimeout = 30 * time.Second
 	topicSensor      = "espgate/sensor"
@@ -28,6 +33,7 @@ const (
 type Config struct {
 	BrokerHost string `env:"MQTT_HOST" envDefault:"localhost"`
 	BrokerPort int    `env:"MQTT_PORT" envDefault:"1883"`
+	Address    string `env:"LISTEN" envDefault:":8989"`
 }
 
 func main() {
@@ -47,7 +53,7 @@ func main() {
 
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", cfg.BrokerHost, cfg.BrokerPort))
-	opts.SetClientID("homekit-garage")
+	opts.SetClientID("homekit-garage-local")
 	opts.OnConnect = func(_ mqtt.Client) {
 		log.Info("connected to mqtt", "host", cfg.BrokerHost, "port", cfg.BrokerPort)
 	}
@@ -178,24 +184,38 @@ func main() {
 		}
 	}()
 
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
 	server, err := hap.NewServer(fs, a.A)
 	if err != nil {
 		log.Fatal("fail to start server", "error", err)
 	}
+	server.Addr = cfg.Address
+	server.ServeMux().Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		state := [5]string{"open", "closed", "opening", "closed", "stopped"}[a.GarageDoorOpener.CurrentDoorState.Value()]
+		template.Must(template.New("index").Parse(string(index))).Execute(w, struct {
+			State string
+		}{
+			state,
+		})
+	}))
+	server.ServeMux().Handle("/open", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Info("request open")
+		if token := cli.Publish(topicAct, 1, false, "open"); token.Wait() && token.Error() != nil {
+			log.Error("could not open", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	server.ServeMux().Handle("/close", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Info("request close")
+		if token := cli.Publish(topicAct, 1, false, "close"); token.Wait() && token.Error() != nil {
+			log.Error("could not close", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	signal.Notify(c, syscall.SIGTERM)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		<-c
-		log.Info("stopping server...")
-		signal.Stop(c)
-		cancel()
-	}()
-
-	log.Info("starting server...")
+	log.Info("starting server...", "addr", server.Addr)
 	if err := server.ListenAndServe(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Error("failed to close server", "err", err)
 	}
