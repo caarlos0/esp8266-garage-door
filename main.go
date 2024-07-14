@@ -194,7 +194,8 @@ func main() {
 	server.Addr = cfg.Address
 	server.ServeMux().Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		state := [5]string{"open", "closed", "opening", "closed", "stopped"}[a.GarageDoorOpener.CurrentDoorState.Value()]
-		template.Must(template.New("index").Parse(string(index))).Execute(w, struct {
+		tp := template.Must(template.New("index").Parse(string(index)))
+		_ = tp.Execute(w, struct {
 			State string
 		}{
 			state,

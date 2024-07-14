@@ -12,14 +12,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@2.0.1"></script>
   </head>
-  <body>
+  <body hx-get="/" hx-trigger="every 5s" hx-swap="outerHTML">
     <div class="hero bg-base-200 min-h-screen">
       <div class="hero-content text-center">
         <div class="max-w-md">
           <h1 class="text-5xl font-bold">Garage</h1>
-          <div class="badge badge-primary badge-outline">
-            currently {{.State}}
-          </div>
+          <div class="badge badge-primary badge-outline">{{.State}}</div>
           <div hx-swap="none" class="pt-2">
             <button class="btn btn-success" hx-post="/open">Open</button>
             <button class="btn btn-warning" hx-post="/close">Close</button>
