@@ -20,14 +20,10 @@
           <div class="badge badge-primary badge-outline">
             currently {{.State}}
           </div>
-          <ul
-            class="menu menu-vertical lg:menu-horizontal bg-base-200 rounded-box"
-          >
-            <li>
-              <a class="btn btn-success" hx-post="/open" hx-swap="none">Open</a>
-            </li>
-            <a class="btn btn-warning" hx-post="/close" hx-swap="none">Close</a>
-          </ul>
+          <div hx-swap="none" class="pt-2">
+            <button class="btn btn-success" hx-post="/open">Open</button>
+            <button class="btn btn-warning" hx-post="/close">Close</button>
+          </div>
         </div>
       </div>
     </div>
