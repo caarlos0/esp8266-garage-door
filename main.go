@@ -53,7 +53,7 @@ func main() {
 
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", cfg.BrokerHost, cfg.BrokerPort))
-	opts.SetClientID("homekit-garage-local")
+	opts.SetClientID("homekit-garage")
 	opts.OnConnect = func(_ mqtt.Client) {
 		log.Info("connected to mqtt", "host", cfg.BrokerHost, "port", cfg.BrokerPort)
 	}
