@@ -30,10 +30,18 @@ const (
 	topicAct         = "espgate/act"
 )
 
+const (
+	normallyOpen   = "open"
+	normallyClosed = "closed"
+	stateOpen      = "open"
+	stateClosed    = "closed"
+)
+
 type Config struct {
 	BrokerHost string `env:"MQTT_HOST" envDefault:"localhost"`
 	BrokerPort int    `env:"MQTT_PORT" envDefault:"1883"`
 	Address    string `env:"LISTEN" envDefault:":8989"`
+	Normally   string `env:"NORMALLY" envDefault:"open"`
 }
 
 func main() {
@@ -88,18 +96,20 @@ func main() {
 			return
 		}
 
-		log.Info("got msg", "payload", string(msg.Payload()))
+		adjustedState := adjustState(string(msg.Payload()), cfg.Normally)
+		log.Info("got msg", "payload", string(msg.Payload()), "adjusted-state", adjustedState)
+
 		garage := a.GarageDoorOpener
 
 		once.Do(func() {
 			// startup...
-			state := stateToInt(string(msg.Payload()))
+			state := stateToInt(adjustedState)
 			_ = garage.CurrentDoorState.SetValue(state)
 			_ = garage.TargetDoorState.SetValue(state)
 		})
 
-		switch string(msg.Payload()) {
-		case "open":
+		switch adjustedState {
+		case stateOpen:
 			if lastAction.IsZero() || lastAction.Since() >= operationTimeout {
 				log.Info("open")
 				lastAction.Zero()
@@ -115,7 +125,7 @@ func main() {
 				time.Sleep(operationTimeout - lastAction.Since())
 				ping("open msg")
 			}()
-		case "closed":
+		case stateClosed:
 			if lastAction.IsZero() || lastAction.Since() >= operationTimeout {
 				log.Info("closed")
 				lastAction.Zero()
@@ -223,10 +233,23 @@ func main() {
 }
 
 func stateToInt(s string) int {
-	if s == "open" {
+	if s == stateOpen {
 		return characteristic.CurrentDoorStateOpen
 	}
 	return characteristic.CurrentDoorStateClosed
+}
+
+func adjustState(state, normally string) string {
+	if normally == normallyOpen {
+		if state == stateClosed {
+			return stateOpen
+		}
+		return stateClosed
+	}
+	if state == stateOpen {
+		return stateOpen
+	}
+	return stateClosed
 }
 
 type atomicTime struct {
