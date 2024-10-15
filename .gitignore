@@ -6,3 +6,5 @@ arduino_secrets.h
 db
 dist/
 .env
+.direnv
+homekit
