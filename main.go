@@ -25,7 +25,7 @@ import (
 var index []byte
 
 const (
-	operationTimeout = 30 * time.Second
+	operationTimeout = 20 * time.Second
 	topicSensor      = "espgate/sensor"
 	topicAct         = "espgate/act"
 )
