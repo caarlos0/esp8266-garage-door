@@ -25,7 +25,7 @@ import (
 var index []byte
 
 const (
-	operationTimeout = 20 * time.Second
+	operationTimeout = 30 * time.Second
 	topicSensor      = "espgate/sensor"
 	topicAct         = "espgate/act"
 )
@@ -246,10 +246,7 @@ func adjustState(state, normally string) string {
 		}
 		return stateClosed
 	}
-	if state == stateOpen {
-		return stateOpen
-	}
-	return stateClosed
+	return state
 }
 
 type atomicTime struct {
