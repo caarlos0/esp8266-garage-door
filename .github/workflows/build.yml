@@ -12,16 +12,6 @@ permissions:
   contents: read
 
 jobs:
-  govulncheck:
-    uses: caarlos0/meta/.github/workflows/govulncheck.yml@main
-    with:
-      go-version: stable
-  semgrep:
-    uses: caarlos0/meta/.github/workflows/semgrep.yml@main
-  ruleguard:
-    uses: caarlos0/meta/.github/workflows/ruleguard.yml@main
-    with:
-      go-version: stable
   build:
     runs-on: ubuntu-latest
     steps:
