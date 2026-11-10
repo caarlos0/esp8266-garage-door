@@ -1,10 +1,10 @@
 module homekit
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/brutella/hap v0.0.35
-	github.com/caarlos0/env/v11 v11.4.1
+	github.com/caarlos0/env/v11 v11.4.2
 	github.com/charmbracelet/log v1.0.0
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 )
