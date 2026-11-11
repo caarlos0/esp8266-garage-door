@@ -197,11 +197,23 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	server, err := hap.NewServer(fs, a.A)
+	server, err := newServer(fs, a)
 	if err != nil {
 		log.Fatal("fail to start server", "error", err)
 	}
 	server.Addr = cfg.Address
+
+	log.Info("starting server...", "addr", server.Addr)
+	if err := server.ListenAndServe(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Error("failed to close server", "err", err)
+	}
+}
+
+func newServer(fs hap.Store, a *accessory.GarageDoorOpener) (*hap.Server, error) {
+	server, err := hap.NewServer(fs, a.A)
+	if err != nil {
+		return nil, err
+	}
 	server.ServeMux().Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		state := [5]string{"open", "closed", "opening", "closed", "stopped"}[a.GarageDoorOpener.CurrentDoorState.Value()]
 		tp := template.Must(template.New("index").Parse(string(index)))
@@ -211,25 +223,7 @@ func main() {
 			state,
 		})
 	}))
-	server.ServeMux().Handle("/open", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Info("request open")
-		if token := cli.Publish(topicAct, 1, false, "open"); token.Wait() && token.Error() != nil {
-			log.Error("could not open", "err", err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}))
-	server.ServeMux().Handle("/close", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Info("request close")
-		if token := cli.Publish(topicAct, 1, false, "close"); token.Wait() && token.Error() != nil {
-			log.Error("could not close", "err", err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}))
-
-	log.Info("starting server...", "addr", server.Addr)
-	if err := server.ListenAndServe(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Error("failed to close server", "err", err)
-	}
+	return server, nil
 }
 
 func stateToInt(s string) int {
