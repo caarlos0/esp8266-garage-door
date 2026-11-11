@@ -26,6 +26,12 @@ You'll also need to create an `arduino_secrets.h` with the Wifi info and MQTT se
 
 In the Homekit controller, you'll need to set the `operationTimeout` (default 30s) and the MQTT server IP.
 
+Set `HOMEKIT_PIN` to a unique, randomly generated eight-digit pairing code
+before starting the controller. Store it privately and use it to pair your
+HomeKit client. Startup fails if the code is missing, malformed, or a known
+default/insecure code. The library's shared default is no longer accepted.
+Existing pairing records in `db` are preserved.
+
 ## Future
 
 Maybe ditch the separated Go Homekit controller and run it directly in the ESP?

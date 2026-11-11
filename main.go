@@ -42,12 +42,31 @@ type Config struct {
 	BrokerPort int    `env:"MQTT_PORT" envDefault:"1883"`
 	Address    string `env:"LISTEN" envDefault:":8989"`
 	Normally   string `env:"NORMALLY" envDefault:"open"`
+	Pin        string `env:"HOMEKIT_PIN,required,notEmpty"`
+}
+
+func (c Config) validate() error {
+	if len(c.Pin) != 8 {
+		return errors.New("HOMEKIT_PIN must contain exactly eight digits")
+	}
+	for _, digit := range c.Pin {
+		if digit < '0' || digit > '9' {
+			return errors.New("HOMEKIT_PIN must contain exactly eight digits")
+		}
+	}
+	if c.Pin == "00102003" || hap.InvalidPins[c.Pin] {
+		return errors.New("HOMEKIT_PIN must not be a default or insecure pairing code")
+	}
+	return nil
 }
 
 func main() {
 	cfg, err := env.ParseAs[Config]()
 	if err != nil {
 		log.Fatal("failed to parse config", "err", err)
+	}
+	if err := cfg.validate(); err != nil {
+		log.Fatal("invalid config", "err", err)
 	}
 
 	fs := hap.NewFsStore("./db")
@@ -202,6 +221,7 @@ func main() {
 		log.Fatal("fail to start server", "error", err)
 	}
 	server.Addr = cfg.Address
+	server.Pin = cfg.Pin
 	server.ServeMux().Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		state := [5]string{"open", "closed", "opening", "closed", "stopped"}[a.GarageDoorOpener.CurrentDoorState.Value()]
 		tp := template.Must(template.New("index").Parse(string(index)))
