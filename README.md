@@ -19,6 +19,10 @@ The firmware is pretty "dumb", on purpose, as its the hardest part to maintain/u
 
 The Homekit controller runs in a raspberry pi, and is very lightweight too.
 
+Garage control is available through paired HomeKit clients only.
+The HTTP page shows status; the unauthenticated `/open` and `/close` routes
+have been removed.
+
 ## Configuration
 
 In the firmware, you might want to change the `PULSE` (default 500ms) time.
